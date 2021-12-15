@@ -1,0 +1,18 @@
+--- a/src/idl_gen_cpp.cpp
++++ b/src/idl_gen_cpp.cpp
+@@ -2726,12 +2726,9 @@ class CppGenerator : public BaseGenerator {
+       // Generate the X::UnPack() method.
+       code_ +=
+           "inline " + TableUnPackSignature(struct_def, false, opts_) + " {";
+-
+-      code_ +=
+-          "  {{POINTER_TYPE}} _o = {{POINTER_TYPE}}(new {{NATIVE_NAME}}());";
+-      code_ += "  UnPackTo(_o.get(), _resolver);";
+-      code_ += "  return _o.release();";
+-
++      code_ += "  auto _o = new {{NATIVE_NAME}}();";
++      code_ += "  UnPackTo(_o, _resolver);";
++      code_ += "  return _o;";
+       code_ += "}";
+       code_ += "";
+

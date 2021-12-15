@@ -1,0 +1,54 @@
+--- ./include/flatbuffers/idl.h	2018-10-03 12:48:47.000000000 -0700
++++ ../../idl.h	2019-01-22 17:16:15.000000000 -0800
+@@ -191,14 +191,20 @@
+     }
+   }
+ 
+-  T *Lookup(const std::string &name) const {
+-    auto it = dict.find(name);
+-    return it == dict.end() ? nullptr : it->second;
+-  }
++  using lookup_failure_hook = std::function<T*(const std::string&, const SymbolTable<T>*)>;
++  static inline lookup_failure_hook s_hook;
++
++  T* Lookup(const std::string& name) const {
++      auto it = dict.find(name);
++      if (it != dict.end())
++          return it->second;
++      else if (s_hook) return s_hook(name, this);
++      else return nullptr;
++  }  
+ 
+  public:
+-  std::map<std::string, T *> dict;  // quick lookup
+-  std::vector<T *> vec;             // Used to iterate in order of insertion
++  mutable std::map<std::string, T *> dict;  // quick lookup
++  mutable std::vector<T *> vec;             // Used to iterate in order of insertion
+ };
+ 
+ // A name space, as set in the schema.
+@@ -658,9 +664,11 @@
+                                              std::string *last);
+   FLATBUFFERS_CHECKED_ERROR ParseTypeIdent(Type &type);
+   FLATBUFFERS_CHECKED_ERROR ParseType(Type &type);
++ public:
+   FLATBUFFERS_CHECKED_ERROR AddField(StructDef &struct_def,
+                                      const std::string &name, const Type &type,
+                                      FieldDef **dest);
++ private: 
+   FLATBUFFERS_CHECKED_ERROR ParseField(StructDef &struct_def);
+   FLATBUFFERS_CHECKED_ERROR ParseString(Value &val);
+   FLATBUFFERS_CHECKED_ERROR ParseComma();
+@@ -782,9 +790,11 @@
+   const char *source_;
+ 
+   std::string file_being_parsed_;
+-
++ 
++ public:
+   std::vector<std::pair<Value, FieldDef *>> field_stack_;
+ 
++ private:
+   int anonymous_counter;
+   int recurse_protection_counter;
+ };

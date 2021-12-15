@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package nucolumnar.datatypes.v1;
+
+message ValueP {
+    // The kind of value.
+    oneof kind {
+        // Represents a null value.
+        NullValueP null_value = 1;
+
+        int32 int_value = 2;
+
+        int64 long_value = 3;
+
+        uint32 uint_value = 4;
+
+        uint64 ulong_value = 5;
+
+        // Represents a double value.
+        double double_value = 6;
+
+        // Represents a string value.
+        string string_value = 7;
+
+        // Represents a boolean value.
+        bool bool_value = 8;
+
+        // epoch timestamp with milliseconds precision
+        TimestampP timestamp = 9;
+
+        // Represents a repeated `Value`.
+        nucolumnar.datatypes.v1.ListValueP list_value = 10;
+    }
+}
+
+enum NullValueP {
+    // Null value.
+    NULL_VALUE = 0;
+}
+
+message TimestampP {
+    // Represents milliseconds of UTC time since Unix epoch
+    // 1970-01-01T00:00:00Z. Must be less than 9999-12-31T23:59:59Z inclusive.
+    uint64 milliseconds = 1;
+}
+
+// `ListValue` is a wrapper around a repeated field of values.
+//
+// The JSON representation for `ListValue` is JSON array.
+message ListValueP {
+    // Repeated field of dynamically typed values.
+    repeated nucolumnar.datatypes.v1.ValueP value = 1;
+}

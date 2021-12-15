@@ -1,0 +1,455 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f9a6a96..b5c2a99 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -66,4 +66,4 @@ target_include_directories(gmock_main
+ # prometheus-cpp
+ 
+ add_subdirectory(lib)
+-add_subdirectory(tests)
++#add_subdirectory(tests)
+diff --git a/include/prometheus/counter.h b/include/prometheus/counter.h
+index 79e05e4..016d614 100644
+--- a/include/prometheus/counter.h
++++ b/include/prometheus/counter.h
+@@ -13,9 +13,17 @@ class Counter : Metric {
+   static const io::prometheus::client::MetricType metric_type =
+       io::prometheus::client::COUNTER;
+ 
+-  void Increment();
+-  void Increment(double);
+-  double Value() const;
++  void Increment() {
++    gauge_.Increment();
++  }
++  
++  void Increment(double val) {
++    gauge_.Increment(val);
++  }
++  
++  double Value() const {
++    return gauge_.Value();
++  }
+ 
+   io::prometheus::client::Metric Collect();
+ 
+diff --git a/include/prometheus/gauge.h b/include/prometheus/gauge.h
+index bed65bb..8697315 100644
+--- a/include/prometheus/gauge.h
++++ b/include/prometheus/gauge.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include <atomic>
++#include <ctime>
+ 
+ #include "prometheus/collectable.h"
+ #include "prometheus/metric.h"
+@@ -14,20 +15,48 @@ class Gauge : public Metric {
+   static const io::prometheus::client::MetricType metric_type =
+       io::prometheus::client::GAUGE;
+ 
+-  Gauge();
+-  Gauge(double);
+-  void Increment();
+-  void Increment(double);
+-  void Decrement();
+-  void Decrement(double);
+-  void Set(double);
+-  void SetToCurrentTime();
+-  double Value() const;
++  Gauge(): value_{0} {}
++  
++  Gauge(double value):  value_{value} {}
++  
++  void Increment() { Increment(1.0); }
++  
++  void Increment(double value) {
++    if (value < 0.0) {
++      return;
++    }
++    Change(value);
++  }
++  
++  void Decrement() { Decrement(1.0); }
++  
++  void Decrement(double value) {
++    if (value < 0.0) {
++      return;
++    }
++    Change(-1.0 * value);
++  }
++  
++  void Set(double value) { value_.store(value); }
++  
++  void SetToCurrentTime() {
++    auto time = std::time(nullptr);
++    Set(static_cast<double>(time));
++  }
++  
++  double Value() const { return value_; }
+ 
+   io::prometheus::client::Metric Collect();
+ 
+  private:
+-  void Change(double);
++  
++  void Change(double value) {
++    auto current = value_.load();
++    while (!value_.compare_exchange_weak(current, current + value,
++					 std::memory_order_relaxed))
++    ;
++  }
++  
+   std::atomic<double> value_;
+ };
+ }
+diff --git a/include/prometheus/histogram.h b/include/prometheus/histogram.h
+index 5e26015..c3d9040 100644
+--- a/include/prometheus/histogram.h
++++ b/include/prometheus/histogram.h
+@@ -18,6 +18,8 @@ class Histogram : public Metric {
+ 
+   void Observe(double value);
+ 
++  void TransferBucketCounters(const std::vector<double> & counter_values, double sum);
++
+   io::prometheus::client::Metric Collect();
+ 
+  private:
+diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
+index c3ddb28..23ca731 100644
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -63,6 +63,10 @@ install(TARGETS prometheus-cpp EXPORT prometheus-cpp-targets
+ install(
+   FILES
+     ${METRICS_BINARY_DIR}/metrics.pb.h
++    serializer.h
++    json_serializer.h
++    text_serializer.h
++    protobuf_delimited_serializer.h
+   DESTINATION
+     ${CMAKE_INSTALL_INCLUDEDIR}/prometheus
+ )
+diff --git a/lib/counter.cc b/lib/counter.cc
+index ecf39f5..4ee1da2 100644
+--- a/lib/counter.cc
++++ b/lib/counter.cc
+@@ -2,12 +2,6 @@
+ 
+ namespace prometheus {
+ 
+-void Counter::Increment() { gauge_.Increment(); }
+-
+-void Counter::Increment(double val) { gauge_.Increment(val); }
+-
+-double Counter::Value() const { return gauge_.Value(); }
+-
+ io::prometheus::client::Metric Counter::Collect() {
+   io::prometheus::client::Metric metric;
+   auto counter = metric.mutable_counter();
+diff --git a/lib/gauge.cc b/lib/gauge.cc
+index ed7a121..db04061 100644
+--- a/lib/gauge.cc
++++ b/lib/gauge.cc
+@@ -1,43 +1,6 @@
+-#include <ctime>
+-
+ #include "prometheus/gauge.h"
+ 
+ namespace prometheus {
+-Gauge::Gauge() : value_{0} {}
+-
+-Gauge::Gauge(double value) : value_{value} {}
+-
+-void Gauge::Increment() { Increment(1.0); }
+-void Gauge::Increment(double value) {
+-  if (value < 0.0) {
+-    return;
+-  }
+-  Change(value);
+-}
+-
+-void Gauge::Decrement() { Decrement(1.0); }
+-
+-void Gauge::Decrement(double value) {
+-  if (value < 0.0) {
+-    return;
+-  }
+-  Change(-1.0 * value);
+-}
+-
+-void Gauge::Set(double value) { value_.store(value); }
+-
+-void Gauge::Change(double value) {
+-  auto current = value_.load();
+-  while (!value_.compare_exchange_weak(current, current + value))
+-    ;
+-}
+-
+-void Gauge::SetToCurrentTime() {
+-  auto time = std::time(nullptr);
+-  Set(static_cast<double>(time));
+-}
+-
+-double Gauge::Value() const { return value_; }
+ 
+ io::prometheus::client::Metric Gauge::Collect() {
+   io::prometheus::client::Metric metric;
+diff --git a/lib/histogram.cc b/lib/histogram.cc
+index 5a6f82a..f6bb2b0 100644
+--- a/lib/histogram.cc
++++ b/lib/histogram.cc
+@@ -1,4 +1,5 @@
+ #include <algorithm>
++#include <cassert>
+ #include <iterator>
+ #include <numeric>
+ 
+@@ -7,18 +8,34 @@
+ namespace prometheus {
+ 
+ Histogram::Histogram(const BucketBoundaries& buckets)
+-    : bucket_boundaries_(buckets), bucket_counts_(buckets.size() + 1) {}
++  : bucket_boundaries_(buckets), bucket_counts_(buckets.size() + 1) {
++    assert(std::is_sorted(std::begin(bucket_boundaries_), std::end(bucket_boundaries_)));
++  }
+ 
+ void Histogram::Observe(double value) {
+   // TODO: determine bucket list size at which binary search would be faster
+   auto bucket_index = static_cast<std::size_t>(std::distance(
+       bucket_boundaries_.begin(),
+       std::find_if(bucket_boundaries_.begin(), bucket_boundaries_.end(),
+-                   [value](double boundary) { return boundary > value; })));
++                   [value](double boundary) { return boundary >= value; })));
+   sum_.Increment(value);
+   bucket_counts_[bucket_index].Increment();
+ }
+ 
++void Histogram::TransferBucketCounters(const std::vector<double> & counter_values, double sum) {
++  for (std::size_t i=0; i < counter_values.size(); i++) {
++    double current_value = bucket_counts_[i].Value();
++    double diff = counter_values[i] - current_value;
++    //if diff turns out to  be "-0.00", i.e., <0, gaugue increment will discard it.
++    bucket_counts_[i].Increment(diff);
++  }
++
++  double sum_diff = sum - sum_.Value();
++  //if sum_diff turns out to  be "-0.00", i.e., <0, gaugue increment will discard it.
++  sum_.Increment(sum_diff);
++	  
++}
++  
+ io::prometheus::client::Metric Histogram::Collect() {
+   auto metric = io::prometheus::client::Metric{};
+   auto histogram = metric.mutable_histogram();
+@@ -41,3 +58,4 @@ io::prometheus::client::Metric Histogram::Collect() {
+   return metric;
+ }
+ }
++
+diff --git a/lib/text_serializer.cc b/lib/text_serializer.cc
+index 0cd81b5..aea0f8f 100644
+--- a/lib/text_serializer.cc
++++ b/lib/text_serializer.cc
+@@ -1,13 +1,195 @@
+ #include "text_serializer.h"
++#include <cmath>
++#include <iostream>
++#include <sstream>
+ 
+ namespace prometheus {
+ 
++using namespace io::prometheus::client;
++
++namespace {
++
++// Write a double as a string, with proper formatting for infinity and NaN
++std::string ToString(double v) {
++  if (std::isnan(v)) {
++    return "Nan";
++  }
++  if (std::isinf(v)) {
++    return (v < 0 ? "-Inf" : "+Inf");
++  }
++  return std::to_string(v);
++}
++
++const std::string& EscapeLabelValue(const std::string& value,
++                                    std::string* tmp) {
++  bool copy = false;
++  for (size_t i = 0; i < value.size(); ++i) {
++    auto c = value[i];
++    if (c == '\\' || c == '"' || c == '\n') {
++      if (!copy) {
++        tmp->reserve(value.size() + 1);
++        tmp->assign(value, 0, i);
++        copy = true;
++      }
++      if (c == '\\') {
++        tmp->append("\\\\");
++      } else if (c == '"') {
++        tmp->append("\\\"");
++      } else {
++        tmp->append("\\\n");
++      }
++    } else if (copy) {
++      tmp->push_back(c);
++    }
++  }
++  return copy ? *tmp : value;
++}
++
++// Write a line header: metric name and labels
++void WriteHead(std::ostream& out, const MetricFamily& family,
++               const Metric& metric, const std::string& suffix = "",
++               const std::string& extraLabelName = "",
++               const std::string& extraLabelValue = "") {
++  out << family.name() << suffix;
++  if (metric.label_size() != 0 || !extraLabelName.empty()) {
++    out << "{";
++    const char* prefix = "";
++    std::string tmp;
++    for (auto& lp : metric.label()) {
++      out << prefix << lp.name() << "=\"" << EscapeLabelValue(lp.value(), &tmp)
++          << "\"";
++      prefix = ",";
++    }
++    if (!extraLabelName.empty()) {
++      out << prefix << extraLabelName << "=\""
++          << EscapeLabelValue(extraLabelValue, &tmp) << "\"";
++    }
++    out << "}";
++  }
++  out << " ";
++}
++
++// Write a line trailer: timestamp
++void WriteTail(std::ostream& out, const Metric& metric) {
++  if (metric.timestamp_ms() != 0) {
++    out << " " << metric.timestamp_ms();
++  }
++  out << "\n";
++}
++
++void SerializeCounter(std::ostream& out, const MetricFamily& family,
++                      const Metric& metric) {
++  WriteHead(out, family, metric);
++  out << ToString(metric.counter().value());
++  WriteTail(out, metric);
++}
++
++void SerializeGauge(std::ostream& out, const MetricFamily& family,
++                    const Metric& metric) {
++  WriteHead(out, family, metric);
++  out << ToString(metric.gauge().value());
++  WriteTail(out, metric);
++}
++
++void SerializeSummary(std::ostream& out, const MetricFamily& family,
++                      const Metric& metric) {
++  auto& sum = metric.summary();
++  WriteHead(out, family, metric, "_count");
++  out << sum.sample_count();
++  WriteTail(out, metric);
++
++  WriteHead(out, family, metric, "_sum");
++  out << ToString(sum.sample_sum());
++  WriteTail(out, metric);
++
++  for (auto& q : sum.quantile()) {
++    WriteHead(out, family, metric, "_quantile", "quantile",
++              ToString(q.quantile()));
++    out << ToString(q.value());
++    WriteTail(out, metric);
++  }
++}
++
++void SerializeUntyped(std::ostream& out, const MetricFamily& family,
++                      const Metric& metric) {
++  WriteHead(out, family, metric);
++  out << ToString(metric.untyped().value());
++  WriteTail(out, metric);
++}
++
++void SerializeHistogram(std::ostream& out, const MetricFamily& family,
++                        const Metric& metric) {
++  auto& hist = metric.histogram();
++  WriteHead(out, family, metric, "_count");
++  out << hist.sample_count();
++  WriteTail(out, metric);
++
++  WriteHead(out, family, metric, "_sum");
++  out << ToString(hist.sample_sum());
++  WriteTail(out, metric);
++
++  double last = -std::numeric_limits<double>::infinity();
++  for (auto& b : hist.bucket()) {
++    WriteHead(out, family, metric, "_bucket", "le", ToString(b.upper_bound()));
++    last = b.upper_bound();
++    out << b.cumulative_count();
++    WriteTail(out, metric);
++  }
++
++  if (last != std::numeric_limits<double>::infinity()) {
++    WriteHead(out, family, metric, "_bucket", "le", "+Inf");
++    out << hist.sample_count();
++    WriteTail(out, metric);
++  }
++}
++
++void SerializeFamily(std::ostream& out, const MetricFamily& family) {
++  if (!family.help().empty()) {
++    out << "# HELP " << family.name() << " " << family.help() << "\n";
++  }
++  switch (family.type()) {
++    case COUNTER:
++      out << "# TYPE " << family.name() << " counter\n";
++      for (auto& metric : family.metric()) {
++        SerializeCounter(out, family, metric);
++      }
++      break;
++    case GAUGE:
++      out << "# TYPE " << family.name() << " gauge\n";
++      for (auto& metric : family.metric()) {
++        SerializeGauge(out, family, metric);
++      }
++      break;
++    case SUMMARY:
++      out << "# TYPE " << family.name() << " summary\n";
++      for (auto& metric : family.metric()) {
++        SerializeSummary(out, family, metric);
++      }
++      break;
++    case UNTYPED:
++      out << "# TYPE " << family.name() << " untyped\n";
++      for (auto& metric : family.metric()) {
++        SerializeUntyped(out, family, metric);
++      }
++      break;
++    case HISTOGRAM:
++      out << "# TYPE " << family.name() << " histogram\n";
++      for (auto& metric : family.metric()) {
++        SerializeHistogram(out, family, metric);
++      }
++      break;
++    default:
++      break;
++  }
++}
++}
++
+ std::string TextSerializer::Serialize(
+     const std::vector<io::prometheus::client::MetricFamily>& metrics) {
+-  auto result = std::string{};
+-  for (auto&& metric : metrics) {
+-    result += metric.DebugString() + "\n";
++  std::ostringstream ss;
++  for (auto& family : metrics) {
++    SerializeFamily(ss, family);
+   }
+-  return result;
++  return ss.str();
+ }
+ }

@@ -1,0 +1,11 @@
+--- a/contrib/poco/Net/include/Poco/Net/TCPServerDispatcher.h
++++ b/contrib/poco/Net/include/Poco/Net/TCPServerDispatcher.h
+@@ -17,7 +17,7 @@
+ #ifndef Net_TCPServerDispatcher_INCLUDED
+ #define Net_TCPServerDispatcher_INCLUDED
+
+-
++#include <atomic>
+ #include "Poco/Net/Net.h"
+ #include "Poco/Net/StreamSocket.h"
+ #include "Poco/Net/TCPServerConnectionFactory.h"

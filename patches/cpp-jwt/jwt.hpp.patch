@@ -1,0 +1,25 @@
+--- i/include/jwt/jwt.hpp	2018-11-20 05:38:08.000000000 -0800
++++ o/include/jwt/jwt.hpp	2019-04-03 16:36:57.000000000 -0700
+@@ -37,7 +37,12 @@ SOFTWARE.
+ #include "jwt/string_view.hpp"
+ #include "jwt/parameters.hpp"
+ #include "jwt/exceptions.hpp"
+-#include "jwt/json/json.hpp"
++#include <nlohmann/json.hpp>
++
++#ifdef __APPLE__
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wreturn-type"
++#endif
+
+ // For convenience
+ using json_t = nlohmann::json;
+@@ -1213,4 +1218,7 @@ jwt_object decode(const jwt::string_view
+
+ #include "jwt/impl/jwt.ipp"
+
++#ifdef __APPLE__
++#pragma clang diagnostic pop
++#endif
+ #endif
+

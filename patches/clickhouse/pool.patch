@@ -1,0 +1,37 @@
+--- a/src/Client/ConnectionPool.h
++++ b/src/Client/ConnectionPool.h
+@@ -88,6 +88,11 @@ public:
+         return entry;
+     }
+
++    bool isAllFree()
++    {
++        return Base::isAllFree();
++    }
++
+     const std::string & getHost() const
+     {
+         return host;
+
+--- a/src/Common/PoolBase.h
++++ b/src/Common/PoolBase.h
+@@ -127,6 +127,19 @@ public:
+         }
+     }
+
++    bool isAllFree()
++    {
++        std::unique_lock lock(mutex);
++        for (auto & item : items)
++        {
++            if (item->in_use)
++            {
++                return false;
++            }
++        }
++        return true;
++    }
++
+     void reserve(size_t count)
+     {
+         std::lock_guard lock(mutex);

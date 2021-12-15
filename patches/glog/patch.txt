@@ -1,0 +1,11 @@
+--- /tmp/src/glog/vlog_is_on.h.in	2017-05-10 08:31:39.000000000 -0700
++++ src/glog/vlog_is_on.h.in	2017-05-10 08:31:58.000000000 -0700
+@@ -83,7 +83,7 @@
+   __extension__  \
+   ({ static @ac_google_namespace@::int32* vlocal__ = &@ac_google_namespace@::kLogSiteUninitialized;           \
+      @ac_google_namespace@::int32 verbose_level__ = (verboselevel);                    \
+-     (*vlocal__ >= verbose_level__) &&                          \
++     (*vlocal__ & verbose_level__) &&                          \
+      ((vlocal__ != &@ac_google_namespace@::kLogSiteUninitialized) ||                   \
+       (@ac_google_namespace@::InitVLOG3__(&vlocal__, &FLAGS_v,                         \
+                    __FILE__, verbose_level__))); })

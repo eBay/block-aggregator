@@ -1,0 +1,17 @@
+--- CMakeLists.txt	2019-02-07 12:14:16.000000000 -0800
++++ /tmp/CMakeLists.txt	2019-02-07 12:13:13.000000000 -0800
+@@ -6,7 +6,7 @@
+ project (cpp-jwt)
+ 
+ #SET (CMAKE_CXX_COMPILER /usr/local/bin/g++)
+-SET( CMAKE_CXX_FLAGS  "-std=c++14 -Wall" )
++SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++14 -Wall" )
+ 
+ include_directories (include)
+ 
+@@ -20,3 +20,5 @@
+ add_subdirectory (tests)
+ 
+ add_subdirectory (examples)
++
++install(DIRECTORY include/jwt DESTINATION include PATTERN *.cc EXCLUDE PATTERN include/jwt/test EXCLUDE)

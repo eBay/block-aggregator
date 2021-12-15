@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package nucolumnar.service.v1;
+
+import "nucolumnar/datatypes/v1/columnartypes.proto";
+
+option cc_enable_arenas = true;
+
+service NuColumnarService {
+    rpc ExecuteBatchDml(SQLBatchRequest) returns (SQLBatchDmlResponse) { }
+    
+    // method to check the health of the service node
+    rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message SQLBatchRequest {
+    // To validate that this request was properly authenticated
+    string session_id = 1;
+    // Queries should contain either an sql or sql_hash value, but not both
+    string sql = 2;
+    repeated DataBindingList batch_bindings = 3;
+    // Execution Directives govern SQL execution behavior (fetch size, max rows, timeout etc)
+    map<string, string> execution_directives = 4;
+    string request_id = 5;
+    string keyspace = 6;
+
+    string tftoken = 7;
+}
+
+message DataBindingList {
+    repeated nucolumnar.datatypes.v1.ValueP values = 1;
+}
+
+message SQLBatchDmlResponse {
+    Status status = 1;
+    repeated int32 rows_affected = 2;
+}
+
+message Status {
+    int32 status_code = 1;
+    string error_message = 2;
+    SqlError error_cause = 3;
+}
+
+message SqlError {
+    int32 error_code = 1;
+    string reason = 2;
+}
+
+//Empty request message for now, we can add param in future if needed
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+    enum ServerStatus {
+        ONLINE = 0;
+        OFFLINE = 1;
+    }
+    ServerStatus serverStatus = 1;
+}

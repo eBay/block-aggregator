@@ -1,0 +1,235 @@
+{
+    "version": 1,
+    "config": {
+        "identity": {
+            "region": "NA",
+            "zone": "LVS",
+            "keyspace": "marketing",
+            "cluster": "cluster1",
+            "replicaId": "0",
+            "shardId": "0",
+            "replicaSetId": "0",
+            "replicaName": "clickhouse_marketing_0_LVS_2_server",
+            "hostname": "localhost"
+        },
+        "kafka": {
+            "configVariants": [
+                {
+                    "variantName": "local_kafka_cluster",
+                    "zone": "SLC",
+                    "topic": "my-topic3",
+                    "hosts": "localhost:9092",
+                    "tlsEnabled": false,
+                    "tlsIgnoreValidation": true,
+                    "secure": false,
+                    "saslMechanism": "JWT",
+                    "authorizationCert": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/kafka.secret.signatures",
+                    "subject": "nucolumnar.aggregator"
+                },
+                {
+                    "variantName": "local_kafka_cluster",
+                    "zone": "SLC",
+                    "topic": "my-topic3",
+                    "hosts": "localhost:9092",
+                    "tlsEnabled": false,
+                    "tlsIgnoreValidation": true,
+                    "secure": false,
+                    "saslMechanism": "JWT",
+                    "authorizationCert": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/kafka.secret.signatures",
+                    "subject": "nucolumnar.aggregator"
+                }
+            ],
+            "consumerConf": {
+                "enable_auto_commit": false,
+                "enable_auto_offset_store": false,
+                "auto_offset_reset": "earliest",
+                "kafka_batch_size": 10,
+                "kafka_batch_timeout_ms": 1000,
+                "buffer_batch_processing_size": 10,
+                "buffer_batch_processing_timeout_ms": 1000,
+                "max_poll_interval_ms": 10000,
+                "session_timeout_ms": 10000
+            }
+        },
+        "databaseServer": {
+            "host": "10.169.98.238",
+            "port": "9000",
+            "shard_id": "0",
+            "replica_id": "2",
+            "dbauth": {
+                "dbauth_enabled": "false",
+                "dbauthUsernamePath": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/clickhouse.username",
+                "dbauthPasswordPath": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/clickhouse.password"
+            },
+            "default_database": "default",
+            "compression": true,
+            "connection_timeout_ms": 30000,
+            "send_timeout_ms": 30000,
+            "receive_timeout_ms": 30000,
+            "tcp_keep_alive_timeout_ms": 30000,
+            "http_keep_alive_timeout_ms": 30000
+        },
+        "zookeeper": {
+            "endpoints": "localhost:2181",
+            "session_timeout_ms": 30000,
+            "operation_timeout_ms": 10000
+        },
+        "schema": {
+            "version": 0,
+            "databases": [
+                {
+                    "databaseName": "default",
+                    "tables": [
+                        {
+                            "tableName": "ontime",
+                            "columns": [
+                                {
+                                    "name": "year",
+                                    "type": "UInt16"
+                                },
+                                {
+                                    "name": "quarter",
+                                    "type": "UInt8"
+                                },
+                                {
+                                    "name": "month",
+                                    "type": "UInt8"
+                                },
+                                {
+                                    "name": "dayOfMonth",
+                                    "type": "UInt8"
+                                },
+                                {
+                                    "name": "dayOfWeek",
+                                    "type": "UInt8"
+                                },
+                                {
+                                    "name": "flightDate",
+                                    "type": "Date"
+                                },
+                            ]
+                        },
+                        {
+                            "tableName": "simple_event",
+                            "columns": [
+                                {
+                                    "name": "Host",
+                                    "type": "String"
+                                },
+                                {
+                                    "name": "Colo",
+                                    "type": "String"
+                                },
+                                {
+                                    "name": "EventName",
+                                    "type": "String"
+                                },
+                                {
+                                    "name": "Count",
+                                    "type": "UInt64"
+                                },
+                                {
+                                    "name": "Duration",
+                                    "type": "Float32"
+                                },
+                                {
+                                    "name": "TimeStamp",
+                                    "type": "DateTime"
+                                },
+                            ]
+                        },
+                        {
+                            "tableName": "simple_event_5",
+                            "columns": [
+                                {
+                                    "name": "Count",
+                                    "type": "UInt64"
+                                },
+                                {
+                                    "name": "Host",
+                                    "type": "String"
+                                },
+                                {
+                                    "name": "Colo",
+                                    "type": "String"
+                                },
+                            ]
+                        },
+                        {
+                            "tableName": "simple_event_7",
+                            "columns": [
+                                {
+                                    "name": "Count",
+                                    "type": "UInt64"
+                                },
+                                {
+                                    "name": "Host",
+                                    "type": "String"
+                                },
+                                {
+                                    "name": "Colo",
+                                    "type": "String"
+                                },
+                            ]
+                        },
+                        {
+                            "tableName": "simple_event_9",
+                            "columns": [
+                                {
+                                    "name": "Time",
+                                    "type": "Date"
+                                },
+                                {
+                                    "name": "Host",
+                                    "type": "String"
+                                },
+                            ]
+                        },
+                    ]
+                }
+            ]
+        },
+        "httpServer": {
+            "port": 13008,
+            "bindAddress": "::",
+            "tlsEnabled": true,
+            "authorization": {
+                "httpAuthorizationEnabled": false,
+                "httpAuthorizationCert": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/secret.signatures"
+            }
+        },
+        "security": {
+            "tlsCACertPath": "",
+            "tlsCertPath": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/monstordb.cert",
+            "tlsKeyPath": "/home/junli5/work/nudata/gitrepo/NuColumnarAggr2020/NuColumnarAggr/run-tests/conf/.monstorsecurity/monstordb.key"
+        },
+        "umpEvent": {
+            "enabled": false,
+            "metricsBeatEnabled": false,
+            "httpPort": 80,
+            "nameSpace": "onboard",
+            "serverAddress": "sherlock-ump-ingress-service-staging-4ygxp.vip.lvs02.dev.ebayc3.com",
+            "consumerId": "urn:ebay-ump-consumerid:6eafda05-2dea-4417-9efc-efb7834768e5",
+            "eventQueueLength": 50,
+            "eventQueueFlushThreshold": 0.7,
+            "eventQueueFlushTimerInterval": 3000,
+            "threadPoolSize": 1,
+            "httpRetries": 3,
+            "httpConnectionTimeout": 2000,
+            "httpSendRecvTimeout": 2000,
+            "heartbeatEventEnabled": true,
+            "heartbeatEventInterval": 600
+        },
+        "debug": {},
+        "glog": {
+            "FLAGS_v": 4,
+            "FLAGS_max_log_size": 10,
+            "FLAGS_logtostderr": 0,
+            "FLAGS_alsologtostderr": 1,
+            "FLAGS_stderrthreshold": 3,
+            "FLAGS_logbuflevel": -1,
+            "FLAGS_vmodule": "admin=4,app=3,http_server=5,metrics=1,rcu=1,settings=4,kafka_consumer=4"
+        },
+        "shutdown_wait_time_sec": 10
+    }
+}

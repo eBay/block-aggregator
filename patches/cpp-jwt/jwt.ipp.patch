@@ -1,0 +1,10 @@
+--- i/include/jwt/impl/jwt.ipp	2018-11-20 05:38:08.000000000 -0800
++++ o/include/jwt/impl/jwt.ipp	2019-04-02 15:49:18.000000000 -0700
+@@ -26,6 +26,7 @@
+ #include "jwt/config.hpp"
+ #include "jwt/detail/meta.hpp"
+ #include <algorithm>
++#include <iomanip>
+ 
+ namespace jwt {
+ 

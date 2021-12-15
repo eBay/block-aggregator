@@ -1,0 +1,140 @@
+<config>
+  <SupportedTables>
+
+   <!--each table specifies: database name, table name, and the corresponding columns associated with
+       the table that need to be inserted. Note: this is not the complete schema in ClickHouse -->
+    <SupportedTable>
+      <database>default</database>
+      <table>simple_event</table>
+      <insert_query>insert into simple_event (`Host`, `Colo`, `EventName`, `Count`, `Duration`, `TimeStamp`) VALUES ('graphdb-21', 'LVS', 'TERMINATED', 1,  1000,  '2019-06-15 23:00:06')</insert_query>
+      <columns>
+          <Column>
+            <ColumnType>String</ColumnType>
+            <ColumnName>Host</ColumnName>
+          </Column>
+          <Column>
+             <ColumnType>String</ColumnType>
+             <ColumnName>Colo</ColumnName>
+          </Column>
+          <Column>
+             <ColumnType>String</ColumnType>
+             <ColumnName>EventName</ColumnName>
+          </Column>
+         <Column>
+             <ColumnType>UInt64</ColumnType>
+             <ColumnName>Count</ColumnName>
+         </Column>
+         <Column>
+             <ColumnType>Float32</ColumnType>
+             <ColumnName>Duration</ColumnName>
+         </Column>
+         <Column>
+              <ColumnType>DateTime</ColumnType>
+              <ColumnName>TimeStamp</ColumnName>
+         </Column>
+      </columns>
+    </SupportedTable>
+
+    <SupportedTable>
+      <database>default</database>
+      <table>simple_event_5</table>
+      <insert_query>insert into simple_event_5 (`Count`, `Host`, `Colo`) VALUES (1000, 'graphdb-21', 'LVS')</insert_query>
+      <columns>
+          <Column>
+            <ColumnType>UInt64</ColumnType>
+            <ColumnName>Count</ColumnName>
+          </Column>
+          <Column>
+            <ColumnType>String</ColumnType>
+            <ColumnName>Host</ColumnName>
+          </Column>
+          <Column>
+            <ColumnType>String</ColumnType>
+            <ColumnName>Colo</ColumnName>
+          </Column>
+      </columns>
+    </SupportedTable>
+
+  </SupportedTables>
+
+ <!--following the parameters defined in local database server for connection  -->
+ <DatabaseServer>
+   <!--since this is the local database server, choose: localhost  -->
+   <host>10.169.98.238</host>
+   <is_secure>false</is_secure>
+   <port>9000</port>
+   <database>default</database>
+   <user>default</user>
+   <password></password>
+   <compression>true</compression>
+
+   <connection_timeout>30000</connection_timeout>
+   <send_timeout>30000</send_timeout>
+   <receive_timeout>30000</receive_timeout>
+   <tcp_keep_alive_timeout>30000</tcp_keep_alive_timeout>
+   <http_keep_alive_timeout>30000</http_keep_alive_timeout>
+ </DatabaseServer> 
+
+ 
+ <!--following the parameters defined for kafka connections, each datacenter has its own kafka connection specification  -->
+ <KafkaConnections>
+    <KafkaConnection>
+        <zone>lvs</zone>
+        <topic>my-test-topic-36</topic>
+        <group_id>unit_test_group</group_id>
+
+        <!-- list of the server and the ports associated with the bootstrap servers--> 
+        <servers>
+            <server>10.148.179.120:9092</server>
+        </servers>
+
+        <!-- default to be: false --> 
+        <enable_auto_commit>false</enable_auto_commit>
+        <!-- default to be false -->
+        <enable_auto_offset_store>false</enable_auto_offset_store>
+        <!-- choose from "earliest" or "latest"-->
+        <auto_offset_reset>earliest</auto_offset_reset>
+
+        <!-- batch size in bytes -->
+        <kafka_batch_size>1000000</kafka_batch_size>
+        <!-- batch timeout in ms -->
+        <kafka_batch_timeout>1000</kafka_batch_timeout>
+
+        <!-- accumulated block processing size in bytes -->
+        <buffer_batch_processing_size>1000000</buffer_batch_processing_size>
+        <!-- accumulated block processing size in ms -->
+        <buffer_batch_processing_timeout>1000</buffer_batch_processing_timeout>
+
+	<max_poll_interval_ms>10000</max_poll_interval_ms>
+        <!-- max poll interval time needs to be larger than session timeout time -->
+        <session_timeout_ms>10000</session_timeout_ms>
+	
+    </KafkaConnection>
+
+ </KafkaConnections>
+
+ <Zookeeper>
+    <node>
+        <host>10.169.98.238</host>
+        <port>2181</port>
+    </node>
+    <node>
+        <host>10.169.106.125</host>
+        <port>2181</port>
+    </node>
+
+    <node>
+        <host>10.169.100.133</host>
+        <port>2181</port>
+    </node>
+
+    <session_timeout_ms>30000</session_timeout_ms>
+    <operation_timeout_ms>10000</operation_timeout_ms>
+
+    <!-- Optional. Chroot suffix. Should exist. -->
+    <!--<root>/path/to/zookeeper/node</root> -->
+    <!-- Optional. Zookeeper digest ACL string. -->
+    <!--<identity>user:password</identity> -->
+ </Zookeeper>
+
+</config> 

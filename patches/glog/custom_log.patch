@@ -1,0 +1,161 @@
+diff --git a/src/glog/logging.h.in b/src/glog/logging.h.in
+index d6cc865..8b1ec12 100644
+--- a/src/glog/logging.h.in
++++ b/src/glog/logging.h.in
+@@ -990,6 +990,7 @@ const LogSeverity GLOG_0 = GLOG_ERROR;
+ #define DLOG_EVERY_N(severity, n) LOG_EVERY_N(severity, n)
+ #define DLOG_IF_EVERY_N(severity, condition, n) \
+   LOG_IF_EVERY_N(severity, condition, n)
++#define DCVLOG(custom_module, verboselevel) CVLOG(custom_module, verboselevel)
+ #define DLOG_ASSERT(condition) LOG_ASSERT(condition)
+ 
+ // debug-only checking.  executed if DCHECK_IS_ON().
+@@ -1015,6 +1016,10 @@ const LogSeverity GLOG_0 = GLOG_ERROR;
+   (true || !VLOG_IS_ON(verboselevel)) ?\
+     (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(INFO)
+ 
++#define DCVLOG(custom_module, verboselevel) \
++  (true || !CVLOG_IS_ON(custom_module, verboselevel)) ?\
++    (void) 0 : google::LogMessageVoidify() & LOG(INFO)
++
+ #define DLOG_IF(severity, condition) \
+   (true || !(condition)) ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(severity)
+ 
+@@ -1102,6 +1107,18 @@ const LogSeverity GLOG_0 = GLOG_ERROR;
+ #define VLOG_IF_EVERY_N(verboselevel, condition, n) \
+   LOG_IF_EVERY_N(INFO, (condition) && VLOG_IS_ON(verboselevel), n)
+ 
++#define CVLOG(custom_module, verboselevel) \
++  LOG_IF(INFO, CVLOG_IS_ON(custom_module, verboselevel))
++
++#define CVLOG_IF(custom_module, verboselevel, condition) \
++  LOG_IF(INFO, (condition) && CVLOG_IS_ON(custom_module, verboselevel))
++
++#define CVLOG_EVERY_N(custom_module, verboselevel, n) \
++  LOG_IF_EVERY_N(INFO, CVLOG_IS_ON(custom_module, verboselevel), n)
++
++#define CVLOG_IF_EVERY_N(custom_module, verboselevel, condition, n) \
++  LOG_IF_EVERY_N(INFO, (condition) && CVLOG_IS_ON(custom_module, verboselevel), n)
++
+ namespace base_logging {
+ 
+ // LogMessage::LogStream is a std::ostream backed by this streambuf.
+diff --git a/src/glog/raw_logging.h.in b/src/glog/raw_logging.h.in
+index fa17057..e6573cc 100644
+--- a/src/glog/raw_logging.h.in
++++ b/src/glog/raw_logging.h.in
+@@ -100,6 +100,17 @@
+ #endif // STRIP_LOG == 0
+ 
+ #if STRIP_LOG == 0
++#define RAW_CVLOG(custom_module, verboselevel, ...) \
++  do { \
++    if (CVLOG_IS_ON(custom_module, verboselevel)) { \
++      RAW_LOG_INFO(__VA_ARGS__); \
++    } \
++  } while (0)
++#else
++#define RAW_VLOG(verboselevel, ...) RawLogStub__(0, __VA_ARGS__)
++#endif // STRIP_LOG == 0
++
++#if STRIP_LOG == 0
+ #define RAW_LOG_INFO(...) @ac_google_namespace@::RawLog__(@ac_google_namespace@::GLOG_INFO, \
+                                    __FILE__, __LINE__, __VA_ARGS__)
+ #else
+diff --git a/src/glog/vlog_is_on.h.in b/src/glog/vlog_is_on.h.in
+index 3f4c4a3..b151770 100644
+--- a/src/glog/vlog_is_on.h.in
++++ b/src/glog/vlog_is_on.h.in
+@@ -41,7 +41,7 @@
+ //     // that can't be accomplished e.g. via just VLOG(2) << ...;
+ //   }
+ //
+-// The truth value that VLOG_IS_ON(level) returns is determined by 
++// The truth value that VLOG_IS_ON(level) returns is determined by
+ // the three verbosity level flags:
+ //   --v=<n>  Gives the default maximal active V-logging level;
+ //            0 is the default.
+@@ -93,6 +93,32 @@
+ #define VLOG_IS_ON(verboselevel) (FLAGS_v >= (verboselevel))
+ #endif
+ 
++#if defined(__GNUC__)
++#define VLOG_REG_MODULE(custom_module) VLOG_REG_MODULE_INTERNAL(custom_module)
++#define VLOG_REG_MODULE_INTERNAL(custom_module) namespace google {static google::int32* vlocal__##custom_module = &google::kLogSiteUninitialized;}
++
++#define VLOG_DECL_MODULE(custom_module) VLOG_DECL_MODULE_INTERNAL(custom_module)
++#define VLOG_DECL_MODULE_INTERNAL(custom_module) namespace google {extern google::int32* vlocal__##custom_module;}
++
++#define CVLOG_IS_ON_INTERNAL(custom_module, verboselevel)                                \
++  __extension__  \
++  ({ google::int32 verbose_level__ = (verboselevel);                    \
++     (*google::vlocal__##custom_module >= verbose_level__) &&                          \
++     ((google::vlocal__##custom_module != &google::kLogSiteUninitialized) ||                   \
++      (google::InitVLOG3__(&google::vlocal__##custom_module, &FLAGS_v,                         \
++                      (#custom_module), verbose_level__))); })
++
++#define CVLOG_IS_ON(custom_module, verboselevel)   CVLOG_IS_ON_INTERNAL(custom_module, verboselevel)
++
++#else
++
++// GNU extensions not available, so we do not support --vmodule.
++// Dynamic value of FLAGS_v always controls the logging level.
++#define CVLOG_IS_ON(verboselevel) (FLAGS_v >= (verboselevel))
++#define VLOG_REG_MODULE(custom_module) {}
++#define VLOG_DECL_MODULE(custom_module) {}
++#endif
++
+ // Set VLOG(_IS_ON) level for module_pattern to log_level.
+ // This lets us dynamically control what is normally set by the --vmodule flag.
+ // Returns the level that previously applied to module_pattern.
+@@ -104,6 +130,11 @@
+ extern GOOGLE_GLOG_DLL_DECL int SetVLOGLevel(const char* module_pattern,
+                                              int log_level);
+ 
++// This method is useful for getting vlog level. It could be used by the
++// initialization of the caller to conditionally initialize the vlog level
++// Returns the level if module pattern is found, -1 if not found.
++extern GOOGLE_GLOG_DLL_DECL int GetVLOGLevel(const char* module_pattern);
++
+ // Various declarations needed for VLOG_IS_ON above: =========================
+ 
+ // Special value used to indicate that a VLOG_IS_ON site has not been
+diff --git a/src/vlog_is_on.cc b/src/vlog_is_on.cc
+index 4c95583..77f2c10 100644
+--- a/src/vlog_is_on.cc
++++ b/src/vlog_is_on.cc
+@@ -188,7 +188,33 @@ int SetVLOGLevel(const char* module_pattern, int log_level) {
+       vmodule_list = info;
+     }
+   }
+-  RAW_VLOG(1, "Set VLOG level for \"%s\" to %d", module_pattern, log_level);
++  //RAW_CVLOG(module_pattern, 1, "Set VLOG level for \"%s\" to %d", module_pattern, log_level);
++  return result;
++}
++
++int GetVLOGLevel(const char *module_pattern)
++{
++  int result = -1;
++  int const pattern_len = strlen(module_pattern);
++  bool found = false;
++  {
++    MutexLock l(&vmodule_lock);  // protect whole read-modify-write
++    for (const VModuleInfo* info = vmodule_list;
++         info != NULL; info = info->next) {
++      if (info->module_pattern == module_pattern) {
++        if (!found) {
++          result = info->vlog_level;
++          found = true;
++        }
++      } else if (!found  &&
++                 SafeFNMatch_(info->module_pattern.c_str(),
++                              info->module_pattern.size(),
++                              module_pattern, pattern_len)) {
++        result = info->vlog_level;
++        found = true;
++      }
++    }
++  }
+   return result;
+ }
+ 

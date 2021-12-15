@@ -1,0 +1,82 @@
+diff --git a/src/client/linux/minidump_writer/linux_dumper.cc b/src/client/linux/minidump_writer/linux_dumper.cc
+index dbedecd5..0ded9c11 100644
+--- a/src/client/linux/minidump_writer/linux_dumper.cc
++++ b/src/client/linux/minidump_writer/linux_dumper.cc
+@@ -610,7 +610,7 @@ bool LinuxDumper::EnumerateMappings() {
+           const char* name = NULL;
+           // Only copy name if the name is a valid path name, or if
+           // it's the VDSO image.
+-          if (((name = my_strchr(line, '/')) == NULL) &&
++          if (((name = bp_my_strchr(line, '/')) == NULL) &&
+               linux_gate_loc &&
+               reinterpret_cast<void*>(start_addr) == linux_gate_loc) {
+             name = kLinuxGateLibraryName;
+diff --git a/src/client/linux/minidump_writer/minidump_writer.cc b/src/client/linux/minidump_writer/minidump_writer.cc
+index f8cdf2a1..09203384 100644
+--- a/src/client/linux/minidump_writer/minidump_writer.cc
++++ b/src/client/linux/minidump_writer/minidump_writer.cc
+@@ -1181,7 +1181,7 @@ class MinidumpWriter {
+           while (value_len > 0) {
+             const char* tag = value;
+             size_t tag_len = value_len;
+-            const char* p = my_strchr(tag, ' ');
++            const char* p = bp_my_strchr(tag, ' ');
+             if (p) {
+               tag_len = static_cast<size_t>(p - tag);
+               value += tag_len + 1;
+diff --git a/src/common/linux/linux_libc_support.cc b/src/common/linux/linux_libc_support.cc
+index 08b0325e..217f9e72 100644
+--- a/src/common/linux/linux_libc_support.cc
++++ b/src/common/linux/linux_libc_support.cc
+@@ -120,7 +120,7 @@ void my_uitos(char* output, uintmax_t i, unsigned i_len) {
+     output[index - 1] = '0' + (i % 10);
+ }
+ 
+-const char* my_strchr(const char* haystack, char needle) {
++const char* bp_my_strchr(const char* haystack, char needle) {
+   while (*haystack && *haystack != needle)
+     haystack++;
+   if (*haystack == needle)
+diff --git a/src/common/linux/linux_libc_support.h b/src/common/linux/linux_libc_support.h
+index ec5a8d6b..8aca453d 100644
+--- a/src/common/linux/linux_libc_support.h
++++ b/src/common/linux/linux_libc_support.h
+@@ -63,7 +63,7 @@ extern unsigned my_uint_len(uintmax_t i);
+ //   i_len: the length of the integer in base 10 (see |my_uint_len|).
+ extern void my_uitos(char* output, uintmax_t i, unsigned i_len);
+ 
+-extern const char* my_strchr(const char* haystack, char needle);
++extern const char* bp_my_strchr(const char* haystack, char needle);
+ 
+ extern const char* my_strrchr(const char* haystack, char needle);
+ 
+diff --git a/src/common/linux/linux_libc_support_unittest.cc b/src/common/linux/linux_libc_support_unittest.cc
+index adadfed4..d782972e 100644
+--- a/src/common/linux/linux_libc_support_unittest.cc
++++ b/src/common/linux/linux_libc_support_unittest.cc
+@@ -127,17 +127,17 @@ TEST(LinuxLibcSupportTest, uitos) {
+ }
+ 
+ TEST(LinuxLibcSupportTest, strchr) {
+-  ASSERT_EQ(NULL, my_strchr("abc", 'd'));
+-  ASSERT_EQ(NULL, my_strchr("", 'd'));
+-  ASSERT_EQ(NULL, my_strchr("efghi", 'd'));
++  ASSERT_EQ(NULL, bp_my_strchr("abc", 'd'));
++  ASSERT_EQ(NULL, bp_my_strchr("", 'd'));
++  ASSERT_EQ(NULL, bp_my_strchr("efghi", 'd'));
+ 
+-  ASSERT_TRUE(my_strchr("a", 'a'));
+-  ASSERT_TRUE(my_strchr("abc", 'a'));
+-  ASSERT_TRUE(my_strchr("bcda", 'a'));
+-  ASSERT_TRUE(my_strchr("sdfasdf", 'a'));
++  ASSERT_TRUE(bp_my_strchr("a", 'a'));
++  ASSERT_TRUE(bp_my_strchr("abc", 'a'));
++  ASSERT_TRUE(bp_my_strchr("bcda", 'a'));
++  ASSERT_TRUE(bp_my_strchr("sdfasdf", 'a'));
+ 
+   static const char abc3[] = "abcabcabc";
+-  ASSERT_EQ(abc3, my_strchr(abc3, 'a'));
++  ASSERT_EQ(abc3, bp_my_strchr(abc3, 'a'));
+ }
+ 
+ TEST(LinuxLibcSupportTest, strrchr) {

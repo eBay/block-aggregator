@@ -1,0 +1,43 @@
+FROM frolvlad/alpine-glibc:alpine-3.14_glibc-2.33
+
+# set timezone to mountain time
+ENV TZ=/usr/share/zoneinfo/MST
+
+# install basic debugging tools
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    apk --update add --no-cache procps strace tzdata bash wget dpkg-dev procps strace shadow curl vim sudo && \
+    rm -f /usr/bin/vi && \
+    ln -s /usr/bin/vim /usr/bin/vi && \
+    # Add group 'app' and user 'app'
+    groupadd -r app && groupmod -g 1001 app && useradd -r -u 999 -g app app && \
+    mkdir -p /home/app && chown app:app /home/app && \
+    echo "app ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/user && \
+    chmod 0440 /etc/sudoers.d/user && \
+    mkdir -p /nucolumnar/bin && \
+    mkdir -p /nucolumnar/conf && \
+    chown -R app:app /nucolumnar/bin && \
+    chown -R app:app /nucolumnar/conf
+
+# copy the shared libs missing from alpine image
+COPY --chown=root:root sharedlibs/* /lib64/
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/lib64"
+
+#for client-side clickhouse configuration
+RUN mkdir -p /etc/clickhouse-client/
+COPY conf/clickhouse-client/* /etc/clickhouse-client/
+RUN chown -R app:app /etc/clickhouse-client/
+
+#copy and install ca-certificates
+RUN mkdir -p /usr/local/share/ca-certificates
+#need to replace $MY_CA_CERTIFICATE_FILE with an actual CA certificate file
+COPY certificates/$MY_CA_CERTIFICATE_FILE /usr/local/share/ca-certificates/$MY_CA_CERTIFICATE_FILE
+
+# copy static artifacts into the image
+ADD --chown=app:app nucolumnarbins  /nucolumnar/bin
+ADD --chown=app:app conf  /nucolumnar/conf
+ADD --chown=root:root vimrc         /root/.vimrc
+ADD --chown=app:app vimrc           /home/app/.vimrc
+ADD bins                            /usr/bin
+
+# Use this cmd to boot the docker without aggregator: "tail -f /dev/null"
+ENTRYPOINT ["/nucolumnar/bin/startup.sh"]

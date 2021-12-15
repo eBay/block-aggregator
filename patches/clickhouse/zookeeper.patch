@@ -1,0 +1,13 @@
+--- a/src/Common/ZooKeeper/ZooKeeper.cpp	2021-09-07 17:52:43.548773690 -0700
++++ b/src/Common/ZooKeeper/ZooKeeper.cpp	2021-09-08 10:13:50.811578626 -0700
+@@ -93,6 +93,10 @@
+                 dns_error = true;
+                 LOG_ERROR(log, "Cannot use ZooKeeper host {} due to DNS error: {}", host_string, e.displayText());
+             }
++            catch (...)
++            {
++                DB::tryLogCurrentException(log, "Cannot use ZooKeeper host " + host_string);
++            }
+         }
+ 
+         if (nodes.empty())

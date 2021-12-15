@@ -1,0 +1,15 @@
+--- a/contrib/poco/Util/src/Application.cpp
++++ b/contrib/poco/Util/src/Application.cpp
+@@ -105,9 +105,9 @@ void Application::setup()
+ #if defined(POCO_OS_FAMILY_UNIX) && !defined(POCO_VXWORKS)
+ 	_workingDirAtLaunch = Path::current();
+ 
+-	#if !defined(_DEBUG)
+-	Poco::SignalHandler::install();
+-	#endif
++//	#if !defined(_DEBUG)
++//	Poco::SignalHandler::install();
++//	#endif
+ #else
+ 	setUnixOptions(false);
+ #endif

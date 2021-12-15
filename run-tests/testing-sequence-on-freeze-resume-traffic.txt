@@ -1,0 +1,81 @@
+To start a single process of Aggregator: 
+
+./NuColumnarAggr --config-file /tmp/example_aggregator_config.json
+
+then need to go to go to the "logs" directory and: 
+
+tail -f NuColumnarAggr.INFO
+
+
+then start continous traffic, following run-tests/scripts/simple_kafka_producer/readme.txt
+
+
+Perform the following sequence of RESTful commands:
+
+
+(1) re-start itself, it will quit immediately 
+
+curl -k https://localhost:13008/api/v1/restart
+
+
+(2) start:
+
+curl -k https://localhost:13008/api/v1/start
+
+{
+    "message": "application already started and no traffic resume is needed",
+    "success": true
+}
+
+
+(3) freeze:
+
+curl -k https://localhost:13008/api/v1/freeze
+
+{
+    "message": "to freeze traffic",
+    "success": true
+}
+
+(4) status:
+curl -k https://localhost:13008/api/v1/getFreezeStatus
+
+{
+    "KafkaConnectors": {
+        "0": {
+            "freeze_traffic_flag": true,
+            "freeze_traffic_status": true,
+            "running": true,
+            "topic": "mib.cluster1.marketing.1",
+            "zone": "SLC"
+        }
+    }
+}
+
+
+(5) resume: 
+curl -k https://localhost:13008/api/v1/start
+
+and then 
+
+
+(6) check metrics:
+
+curl -k https://localhost:13008/api/v1/getFreezeStatus
+
+and then check metrics 
+
+curl -k https://localhost:13008/metrics | grep "nucolumnar_aggregator_kafakconnector_freeze_traffic_command_received"
+curl -k https://localhost:13008/metrics | grep "nucolumnar_aggregator_kafakconnector_freeze_traffic_status"
+
+
+(7) finall shutdown
+
+curl -k https://localhost:13008/api/v1/restart
+
+
+
+
+
+
+

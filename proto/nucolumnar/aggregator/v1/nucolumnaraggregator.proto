@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package nucolumnar.aggregator.v1;
+
+import "nucolumnar/datatypes/v1/columnartypes.proto";
+
+message SQLBatchRequest{
+    // meta information for batch DML
+    // shard id used for validation of shard
+    string shard = 1;
+    // table name used by aggregator without sql parsing DML statement
+    string table = 2;
+
+    oneof value {
+        // storage agnostic data format
+        SqlWithBatchBindings nucolumnarEncoding = 3;
+
+        // clickhouse native block format
+        ClickHouseNativeBlock clickHouseEncoding = 4;
+    }
+
+    // hash code of table schema
+    int64 schema_hashcode = 5;
+}
+
+message SqlWithBatchBindings{
+    string sql = 1;
+    repeated DataBindingList batch_bindings = 2;
+}
+
+message DataBindingList {
+    repeated  nucolumnar.datatypes.v1.ValueP values = 1;
+}
+
+
+message ClickHouseNativeBlock{
+    bytes block = 1;
+}
+
+

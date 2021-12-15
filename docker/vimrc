@@ -1,0 +1,6 @@
+set encoding=utf-8
+set hlsearch
+set incsearch
+filetype plugin on
+syntax on
+set paste

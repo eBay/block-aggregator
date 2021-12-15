@@ -1,0 +1,9 @@
+--- a/contrib/amqpcpp-cmake/CMakeLists.txt	2021-09-07 18:06:39.055225528 -0700
++++ b/contrib/amqpcpp-cmake/CMakeLists.txt	2021-09-07 18:12:46.490538584 -0700
+@@ -41,5 +41,5 @@
+ 
+ target_include_directories (amqp-cpp SYSTEM PUBLIC "${LIBRARY_DIR}/include")
+ 
+-target_link_libraries (amqp-cpp PUBLIC ssl)
++target_link_libraries (amqp-cpp PUBLIC ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+ 

@@ -1,0 +1,278 @@
+
+native_include "common/non_null_ptr.hpp";
+
+namespace nucolumnar_aggr.config.v1;
+
+attribute "hotswap";
+attribute "deprecated";
+
+
+table HttpAuth {
+    httpAuthorizationEnabled: bool = false;
+    httpAuthorizationCert: string;
+    authorizedRoles: [string];
+    credentialChangeStaggerSecs: uint32 = 86400;
+}
+
+table HttpServer {
+    port: uint32 = 8080;
+    bindAddress: string; //bind to this interface/address in htpp and grpc servers; can be "0.0.0.0"     
+    tlsEnabled: bool = true;
+    authorization: HttpAuth;
+    timeoutSecs: uint32 = 30 (hotswap);
+}
+
+table Glog {
+    FLAGS_v: uint32 = 1;
+    FLAGS_max_log_size: uint32 = 3;
+    FLAGS_logtostderr: uint32 = 0; //Set whether log messages go to stderr instead of logfiles
+    //Buffer log messages logged at this level or lower";-1-NoBuffer, 0-INFO, 1-WARNING, 2-ERROR, 3-FATAL
+    FLAGS_logbuflevel: int32 = -1; //  Log messages at a level <= this flag are buffered. Log messages at a higher level are flushed immediately
+    //copy GLOG levels at above this level to stderr;
+    FLAGS_stderrthreshold: int32 = 3; // Log messages at a level >= this flag are automatically sent to stderr in addition to log files.
+    FLAGS_alsologtostderr: uint32 = 0; //Set whether log messages go to stderr in addition to logfiles.
+    FLAGS_vmodule: string (hotswap);
+}
+
+table UmpEvent {
+    enabled: bool = false;
+    metricsBeatEnabled: bool = false (hotswap);
+    httpPort: uint32 = 80 (hotswap);
+    nameSpace: string (hotswap);
+    serverAddress: string (hotswap);
+    consumerId: string (hotswap);
+    eventQueueLength: uint32 = 1000 (hotswap);
+    eventQueueFlushThreshold: float = 0.7 (hotswap);
+    eventQueueFlushTimerInterval: uint32 = 3000 (hotswap);
+    threadPoolSize: uint32 = 1 (hotswap);
+    httpRetries: uint32 = 3 (hotswap);
+    httpConnectionTimeout: uint32 = 2000 (hotswap);
+    httpSendRecvTimeout: uint32 = 2000 (hotswap);
+    heartbeatEventEnabled: bool = true (hotswap);
+    heartbeatEventInterval: uint32 = 600 (hotswap);
+}
+
+table KafkaConsumerConfigVariant {
+    variantName: string (key, required); //this could be the cluster name (a.k.a stream name)
+    zone: string;
+    hosts: string;
+    topic: string;
+
+    tlsEnabled: bool = false;
+    tlsIgnoreValidation: bool = true;
+    secure: bool = false; //enable authorization
+    saslMechanism: string;
+    authorizationCert: string;
+    subject: string;
+}
+
+table KafkaConsumerConf {
+    enable_auto_commit: bool = false;
+    enable_auto_offset_store: bool = false;
+    auto_offset_reset: string; //"earliest" or "latest"
+    kafka_batch_size: uint64 = 1000000;
+    kafka_batch_timeout_ms: uint64 = 1000;
+
+    buffer_batch_processing_size: uint64 = 1000000 (hotswap);
+    buffer_batch_processing_timeout_ms: uint64 = 1000 (hotswap);
+
+    max_poll_interval_ms: uint64 = 300000;
+    session_timeout_ms: uint64 = 300000;
+    metadata_request_timeout_ms: uint64 = 120000;
+    debug: string; // "broker,topic,queue,msg,protocol,security,metadata,all"
+
+    //temporarily put here, if tlsEnabled is true on the configuration variant
+    tlsEnabled: bool = false;
+    securityProtocol: string; //"sasl_plaintext" or "sasl_ssl"
+    brokerCacert: string; //location of ca cert file, /nucolumnar/.monstorsecurity/columnar.ca.cert
+
+    //parameters for retrying committing metadata to kafka
+    max_number_of_kafka_commit_metadata_retries: uint32 = 500; 
+    kafka_commit_metadata_max_retry_delay_ms: uint32 = 500; 
+    kafka_commit_metadata_initial_retry_delay_ms: uint32 = 100; 
+}
+
+table KafkaConsumer {
+    configVariants: [KafkaConsumerConfigVariant](required);
+    //put settings that don't depend on variant here
+    consumerConf: KafkaConsumerConf;
+}
+
+table AuthorizationParams {
+    //used by both client and servers
+    secret: [string]; //the secret value(s) loaded from secret file
+    loadTime: string; //the time the screts were loaded
+    md5str: string; // md5 of the content of the secret file as is
+
+    //these params are used by the clients only
+    subject: string;
+    id: string;
+    ip: string;
+    username: string;
+
+    //these params are used by the servers only
+    authorizedRoles: [string];
+    tokenCacheCleanupIntervalSec: uint64;
+}
+
+table Processed {
+    hostname: string; //our own host name that we tell the world to reach us
+
+    kafka_consumer_group_id: string;
+
+    authHttpServer: AuthorizationParams;
+    authKafkaClient: [AuthorizationParams];
+    authCoordClient: AuthorizationParams;
+
+    clickhouseUsername: string;
+    clickhousePassword: string;
+    clickhousePasswordDigest: string;
+}
+
+table Security {
+    tlsCACertPath: string;                       
+    tlsCertPath: string;                         
+    tlsKeyPath: string;                          
+}
+
+table DebugSettings {
+}
+
+
+table DBAuth { //MongoDB authentication
+    dbauth_enabled: bool = true;
+    dbauthUsernamePath: string;
+    dbauthPasswordPath: string;
+}
+
+table AggregatorLoader {
+    max_allowed_block_size_in_bytes: uint64 = 10485760; //10*1024*1024 bytes
+    max_allowed_block_size_in_rows: uint64 = 100000;  //100 thousands rows
+    sleep_time_for_retry_initial_connection_ms: uint64 = 1000;
+    number_of_initial_connection_retries: uint64 = 600; //totally 600 seconds
+    sleep_time_for_retry_table_definition_retrieval_ms: uint64 = 50;
+    number_of_table_definition_retrieval_retries: uint64 = 120; //totally 6 seconds, maximum time for each table column definition
+    flush_task_thread_pool_size: uint64 = 5;
+}
+
+table DatabaseServer {
+    host: string; //defaults to current/localhost
+    tlsEnabled: bool = false;
+    port: uint32 = 9000; //default port is 9000 for non-tls, and 9440 for tls.
+
+    shard_id: string; //from clickhouse configuration
+    replica_id: string; //from clickhouse configuration
+
+    dbauth: DBAuth(required);
+    default_database: string; //default is 'default'
+    compression: bool = true;
+    connection_timeout_ms: uint64 = 30000;
+    send_timeout_ms: uint64 = 30000;
+    receive_timeout_ms: uint64 = 30000;
+    tcp_keep_alive_timeout_ms: uint64 = 30000;
+    http_keep_alive_timeout_ms: uint64 = 30000;
+
+    number_of_pooled_connections: uint64 = 10; //totally we have 10 connections
+
+}
+
+table Zookeeper {
+    endpoints: string; //coma-separated list of host:port values
+    session_timeout_ms: uint64 = 30000;
+    operation_timeout_ms: uint64 = 30000;
+}
+
+table Column {
+    name: string (required);
+    type: string (required);
+}
+
+table TableSchema {
+    tableName: string (required);
+    columns: [Column] (required); 
+}
+
+table DatabaseSchema {
+    databaseName: string (required);
+    tables: [TableSchema] (required);
+}
+
+table Schema {
+    version: uint64 = 0;
+    databases: [DatabaseSchema];
+}
+
+table Identity {
+    coordEndpoint: string;
+    region: string;                              
+    zone: string; //overwritten by env
+    keyspace: string;
+    cluster: string;
+    replicaId: string; // this is replica id
+    shardId: string; //this is the coordinator assigned logical shard id
+    replicaSetId: string; //this is the coordinator's concept
+    replicaName: string; //this is the cooredinator's concept as well; ex: "columnar-0-na-na-lvs-0-columnardb-data-data-wszixq",
+    hostname: string; //host name to use to tell others about how to reach me
+}
+
+table LogCleanerConfig {
+    scanIntervalSecs: uint32 = 10 (hotswap);    // Cleaner timer runs every so many seconds
+    maxFileCountPerType: uint32 = 120 (hotswap);   // Max files of type INFO, ERROR, WARNING, etc
+}
+
+table DatabaseInspector {
+    scanIntervalSecs: uint32 = 2 (hotswap);    // Inspector timer runs every so many seconds
+}
+
+table SystemTableExtractor {
+    extractIntervalSecs: uint32 = 30 (hotswap);    // Inspector timer runs every so many seconds
+}
+
+table BlockLoadingToDB {
+    useDistributedLocking: uint32 = 1;    // 1 to use distributed-locking, 0 to use busy-trying and no locking 
+}
+
+table CoordinatorAuth {
+    coordAuthorizationCert: string; // secret path
+    coordAuthorizationEnabled: bool = false;
+}
+
+table CoordinatorClient {
+    coordHost: string;
+    coordPort: uint32 = 443;
+    tlsEnabled: bool = true;
+    tlsIgnoreValidation: bool = true;
+    coordAuth: CoordinatorAuth;
+}
+
+table Config {
+    identity: Identity;
+    kafka: KafkaConsumer;
+    aggregatorLoader: AggregatorLoader;
+    databaseServer: DatabaseServer;
+    databaseInspector: DatabaseInspector;
+    systemTableExtractor: SystemTableExtractor;
+    blockLoadingToDB: BlockLoadingToDB;
+    zookeeper: Zookeeper;
+    schema: Schema;
+
+    httpServer: HttpServer;
+    coordClient: CoordinatorClient;
+    security: Security;
+    glog: Glog;
+    logCleaner: LogCleanerConfig;
+    umpEvent: UmpEvent;
+    debug: DebugSettings;
+
+    memoryThreshold: uint64 = 1000000000 (hotswap);
+    shutdown_wait_time_sec: uint32 = 20 (hotswap); // time to wait for graceful shutdown, before forcing a shutdown.
+}
+
+table NucolumnarAggregatorSettings {
+    version: uint32 = 1;
+    config: Config;
+    processed: Processed;
+}
+
+root_type NucolumnarAggregatorSettings;
+
